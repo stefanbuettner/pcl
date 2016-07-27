@@ -46,6 +46,7 @@
 #include "pcl/pcl_macros.h"
 
 #include <pcl/PCLPointField.h>
+#include <pcl/for_each_type.h>
 #include <boost/type_traits/remove_all_extents.hpp>
 #include <boost/type_traits/is_same.hpp>
 #include <boost/mpl/assert.hpp>
@@ -344,6 +345,39 @@ namespace pcl
   {
     const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(&pt) + field_offset;
     value = *reinterpret_cast<const ValT*>(data_ptr);
+  }
+
+  /** A helper functor for pcl::for_each_type to set a value for all fields with the given type */
+  template <typename PointT, typename Type>
+  struct SetFieldValue
+  {
+    SetFieldValue (PointT &p, const Type& value)
+    : pt_ (p)
+    , value_ (value)
+    {}
+
+    template <typename Key> inline void
+    operator () ()
+    {
+      typedef typename pcl::traits::datatype<PointT, Key>::type FieldType;
+      if (boost::is_same<Type, FieldType>::value)
+      {
+        uint8_t* const dstValueAddr = reinterpret_cast<uint8_t*> (&pt_) + pcl::traits::offset<PointT, Key>::value;
+        Type& dst = *reinterpret_cast<Type*> (dstValueAddr);
+        dst = value_;
+      }
+    }
+  private:
+    PointT& pt_;
+    const Type value_;
+  };
+
+  /** \brief Set all floating point values of pt to NaN. */
+  template <typename PointT> inline void
+  setNaN (PointT &pt)
+  {
+      typedef typename pcl::traits::fieldList<PointT>::type FieldList;
+      pcl::for_each_type<FieldList> (SetFieldValue<PointT, float> (pt, std::numeric_limits<float>::quiet_NaN ()));
   }
 }
 

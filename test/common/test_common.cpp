@@ -523,6 +523,58 @@ TEST (PCL, HasField)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+TEST (PCL, SetNaN)
+{
+  pcl::PointXYZ ptXYZ;
+  ptXYZ.getVector4fMap () = Eigen::Vector4f::Random ();
+  pcl::setNaN (ptXYZ);
+  EXPECT_TRUE ((pcl_isnan(ptXYZ.x)));
+  EXPECT_TRUE ((pcl_isnan(ptXYZ.y)));
+  EXPECT_TRUE ((pcl_isnan(ptXYZ.z)));
+
+  pcl::PointNormal ptXYZNormal;
+  ptXYZNormal.getVector4fMap () = Eigen::Vector4f::Random ();
+  ptXYZNormal.getNormalVector4fMap () = Eigen::Vector4f::Random ();
+  pcl::setNaN (ptXYZNormal);
+  EXPECT_TRUE ((pcl_isnan(ptXYZNormal.x)));
+  EXPECT_TRUE ((pcl_isnan(ptXYZNormal.y)));
+  EXPECT_TRUE ((pcl_isnan(ptXYZNormal.z)));
+  EXPECT_TRUE ((pcl_isnan(ptXYZNormal.normal_x)));
+  EXPECT_TRUE ((pcl_isnan(ptXYZNormal.normal_y)));
+  EXPECT_TRUE ((pcl_isnan(ptXYZNormal.normal_z)));
+
+  // has_field
+  EXPECT_TRUE ((pcl::traits::has_field<pcl::Normal, pcl::fields::curvature>::value));
+  EXPECT_FALSE ((pcl::traits::has_field<pcl::PointXYZ, pcl::fields::curvature>::value));
+  // has_all_fields
+  EXPECT_TRUE ((pcl::traits::has_all_fields<pcl::PointXYZRGB, boost::mpl::vector<pcl::fields::x, pcl::fields::rgb> >::value));
+  EXPECT_FALSE ((pcl::traits::has_all_fields<pcl::PointXYZ, boost::mpl::vector<pcl::fields::x, pcl::fields::rgb> >::value));
+  // has_any_field
+  EXPECT_TRUE ((pcl::traits::has_any_field<pcl::PointXYZ, boost::mpl::vector<pcl::fields::x, pcl::fields::normal_x> >::value));
+  EXPECT_TRUE ((pcl::traits::has_any_field<pcl::Normal, boost::mpl::vector<pcl::fields::x, pcl::fields::normal_x> >::value));
+  EXPECT_FALSE ((pcl::traits::has_any_field<pcl::RGB, boost::mpl::vector<pcl::fields::x, pcl::fields::normal_x> >::value));
+  // has_xyz
+  EXPECT_TRUE ((pcl::traits::has_xyz<pcl::PointXYZ>::value));
+  EXPECT_FALSE ((pcl::traits::has_xyz<pcl::Normal>::value));
+  // has_normal
+  EXPECT_TRUE ((pcl::traits::has_normal<pcl::PointNormal>::value));
+  EXPECT_FALSE ((pcl::traits::has_normal<pcl::PointXYZ>::value));
+  // has_curvature
+  EXPECT_TRUE ((pcl::traits::has_curvature<pcl::PointNormal>::value));
+  EXPECT_FALSE ((pcl::traits::has_curvature<pcl::RGB>::value));
+  // has_intensity
+  EXPECT_TRUE ((pcl::traits::has_intensity<pcl::PointXYZI>::value));
+  EXPECT_FALSE ((pcl::traits::has_intensity<pcl::PointXYZ>::value));
+  // has_color
+  EXPECT_TRUE ((pcl::traits::has_color<pcl::PointXYZRGB>::value));
+  EXPECT_TRUE ((pcl::traits::has_color<pcl::PointXYZRGBA>::value));
+  EXPECT_FALSE ((pcl::traits::has_color<pcl::PointXYZ>::value));
+  // has_label
+  EXPECT_TRUE ((pcl::traits::has_label<pcl::PointXYZL>::value));
+  EXPECT_FALSE ((pcl::traits::has_label<pcl::Normal>::value));
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TEST (PCL, GetMaxDistance)
 {
   PointCloud<PointXYZ> cloud;
