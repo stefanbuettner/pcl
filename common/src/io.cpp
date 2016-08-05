@@ -420,19 +420,71 @@ pcl::copyPointCloud (
     pcl::PCLPointCloud2 &cloud_out)
 {
   cloud_out.header       = cloud_in.header;
-  cloud_out.height       = 1;
-  cloud_out.width        = static_cast<uint32_t> (indices.size ()); 
   cloud_out.fields       = cloud_in.fields;
   cloud_out.is_bigendian = cloud_in.is_bigendian;
   cloud_out.point_step   = cloud_in.point_step;
-  cloud_out.row_step     = cloud_in.point_step * static_cast<uint32_t> (indices.size ());
   cloud_out.is_dense     = cloud_in.is_dense;
 
-  cloud_out.data.resize (cloud_out.width * cloud_out.height * cloud_out.point_step);
+  // If the input cloud is not organized, copy the indexed points into the
+  // output data memory.
+  if (cloud_in.height == 1)
+  {
+    cloud_out.height       = 1;
+    cloud_out.width        = static_cast<uint32_t> (indices.size ());
+    cloud_out.row_step     = cloud_in.point_step * static_cast<uint32_t> (indices.size ());
+    cloud_out.data.resize (cloud_out.width * cloud_out.height * cloud_out.point_step);
 
-  // Iterate over each point
-  for (size_t i = 0; i < indices.size (); ++i)
-    memcpy (&cloud_out.data[i * cloud_out.point_step], &cloud_in.data[indices[i] * cloud_in.point_step], cloud_in.point_step);
+    // Iterate over each point
+    for (size_t i = 0; i < indices.size (); ++i)
+      memcpy (&cloud_out.data[i * cloud_out.point_step], &cloud_in.data[indices[i] * cloud_in.point_step], cloud_in.point_step);
+  }
+  // If the input cloud is organized, set the non-indexed points to NaN and
+  // keep the cloud organization.
+  else
+  {
+    cloud_out.width    = cloud_in.width;
+    cloud_out.height   = cloud_in.height;
+    cloud_out.row_step = cloud_in.row_step;
+    cloud_out.data.resize (cloud_in.data.size ());
+
+    std::vector<pcl::uint8_t>::const_iterator inRowStart = cloud_in.data.begin ();
+    std::vector<pcl::uint8_t>::iterator outRowStart = cloud_out.data.begin ();
+    std::vector<int>::const_iterator idx = indices.begin ();
+    int i = 0;
+    pcl::uint32_t const x_offset = cloud_out.fields[getFieldIndex (cloud_out, "x")].offset;
+    pcl::uint32_t const y_offset = cloud_out.fields[getFieldIndex (cloud_out, "y")].offset;
+    pcl::uint32_t const z_offset = cloud_out.fields[getFieldIndex (cloud_out, "z")].offset;
+    for (size_t y = 0; y < cloud_in.height; ++y)
+    {
+      std::vector<pcl::uint8_t>::const_iterator inBegin  = inRowStart;
+      std::vector<pcl::uint8_t>::const_iterator inEnd    = inBegin + cloud_in.point_step;
+      std::vector<pcl::uint8_t>::iterator       outBegin = outRowStart;
+      inRowStart  += cloud_in.row_step;
+      outRowStart += cloud_out.row_step;
+      for (size_t x = 0; x < cloud_in.width; ++x)
+      {
+        // If the current point index i is an index in the index list, copy
+        // the point.
+        if (*idx == i)
+        {
+          outBegin = std::copy (inBegin, inEnd, outBegin);
+          inBegin += cloud_in.point_step;
+          inEnd   += cloud_in.point_step;
+          ++idx;
+        }
+        // Else the current point index i is smaller than the next index list
+        // entry so the current point needs to be set to NaN.
+        else
+        {
+            *reinterpret_cast<float*> (&(*(outBegin + x_offset))) = std::numeric_limits<float>::quiet_NaN ();
+            *reinterpret_cast<float*> (&(*(outBegin + y_offset))) = std::numeric_limits<float>::quiet_NaN ();
+            *reinterpret_cast<float*> (&(*(outBegin + z_offset))) = std::numeric_limits<float>::quiet_NaN ();
+            outBegin += cloud_out.point_step;
+        }
+        ++i;
+      }
+    }
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////
