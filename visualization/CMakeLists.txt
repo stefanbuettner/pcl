@@ -13,6 +13,7 @@ else(NOT VTK_FOUND)
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 endif(NOT VTK_FOUND)
 
+set(build true)
 PCL_SUBSYS_OPTION(build "${SUBSYS_NAME}" "${SUBSYS_DESC}" ${DEFAULT} "${REASON}")
 PCL_SUBSYS_DEPEND(build "${SUBSYS_NAME}" DEPS ${SUBSYS_DEPS} EXT_DEPS vtk OPT_DEPS openni openni2 ensenso davidSDK dssdk rssdk)
 
